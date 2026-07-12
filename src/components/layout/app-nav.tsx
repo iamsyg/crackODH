@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
+import { NavIcon } from "./nav-icon";
+
 type AppNavProps = {
   items: NavItem[];
 };
@@ -17,7 +19,6 @@ export function AppNav({ items }: AppNavProps) {
     <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
       {items.map((item) => {
         const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        const Icon = item.icon;
 
         return (
           <Link
@@ -30,7 +31,7 @@ export function AppNav({ items }: AppNavProps) {
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
             )}
           >
-            <Icon className="size-4 shrink-0" />
+            <NavIcon name={item.icon} className="size-4 shrink-0" />
             <span>{item.title}</span>
           </Link>
         );
