@@ -7,6 +7,8 @@ import { PageShell } from "@/components/layout/page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { requireAuth } from "@/lib/auth/require-permission";
 import { createDriver } from "@/lib/drivers/actions";
+import { MANUAL_DRIVER_STATUSES } from "@/lib/drivers/status";
+import { DRIVER_STATUS_LABELS } from "@/lib/drivers/constants";
 import { hasPermission } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +28,14 @@ export default async function NewDriverPage() {
         </Link>
       }
     >
-      <DriverForm action={createDriver} submitLabel="Create driver" />
+      <DriverForm
+        action={createDriver}
+        statusOptions={MANUAL_DRIVER_STATUSES.map((value) => ({
+          value,
+          label: DRIVER_STATUS_LABELS[value],
+        }))}
+        submitLabel="Create driver"
+      />
     </PageShell>
   );
 }

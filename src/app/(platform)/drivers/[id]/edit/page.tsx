@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireAuth } from "@/lib/auth/require-permission";
 import { updateDriver } from "@/lib/drivers/actions";
 import { getDriverById } from "@/lib/drivers/queries";
+import { getEditableDriverStatusOptions } from "@/lib/drivers/status";
 import { hasPermission } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +38,12 @@ export default async function EditDriverPage({ params }: EditDriverPageProps) {
         </Link>
       }
     >
-      <DriverForm action={boundUpdateDriver} driver={driver} submitLabel="Save changes" />
+      <DriverForm
+        action={boundUpdateDriver}
+        driver={driver}
+        statusOptions={getEditableDriverStatusOptions(driver.status)}
+        submitLabel="Save changes"
+      />
     </PageShell>
   );
 }

@@ -3,6 +3,7 @@ import { ROLE_LABELS } from "@/lib/rbac";
 import type { TransitOpsRole } from "@/types/roles";
 
 import { SignOutButton } from "./sign-out-button";
+import { ThemeToggle } from "./theme-toggle";
 
 type AppHeaderProps = {
   userName?: string | null;
@@ -20,7 +21,10 @@ export function AppHeader({ userName, userEmail, role }: AppHeaderProps) {
         <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
         <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
       </div>
-      <SignOutButton />
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <SignOutButton />
+      </div>
     </header>
   );
 }

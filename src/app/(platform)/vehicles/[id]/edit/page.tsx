@@ -9,6 +9,7 @@ import { requireAuth } from "@/lib/auth/require-permission";
 import { hasPermission } from "@/lib/rbac";
 import { updateVehicle } from "@/lib/vehicles/actions";
 import { getVehicleById } from "@/lib/vehicles/queries";
+import { getEditableVehicleStatusOptions } from "@/lib/vehicles/status";
 import { cn } from "@/lib/utils";
 
 type EditVehiclePageProps = {
@@ -37,7 +38,12 @@ export default async function EditVehiclePage({ params }: EditVehiclePageProps) 
         </Link>
       }
     >
-      <VehicleForm action={boundUpdateVehicle} submitLabel="Save changes" vehicle={vehicle} />
+      <VehicleForm
+        action={boundUpdateVehicle}
+        statusOptions={getEditableVehicleStatusOptions(vehicle.status)}
+        submitLabel="Save changes"
+        vehicle={vehicle}
+      />
     </PageShell>
   );
 }

@@ -7,15 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { VehicleActionState } from "@/lib/vehicles/actions";
-import { VEHICLE_STATUS_OPTIONS, VEHICLE_TYPE_OPTIONS } from "@/lib/vehicles/constants";
+import { VEHICLE_TYPE_OPTIONS } from "@/lib/vehicles/constants";
 import type { SerializedVehicle } from "@/lib/vehicles/serialize";
 
 const selectClassName =
   "flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
+type StatusOption = {
+  value: string;
+  label: string;
+  locked?: boolean;
+};
+
 type VehicleFormProps = {
   action: (prevState: VehicleActionState, formData: FormData) => Promise<VehicleActionState>;
   vehicle?: SerializedVehicle;
+  statusOptions: StatusOption[];
   submitLabel: string;
 };
 
@@ -24,7 +31,7 @@ function fieldError(fieldErrors: Record<string, string[]> | undefined, field: st
   return message ? <p className="text-xs text-red-600">{message}</p> : null;
 }
 
-export function VehicleForm({ action, vehicle, submitLabel }: VehicleFormProps) {
+export function VehicleForm({ action, vehicle, statusOptions, submitLabel }: VehicleFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
 
   return (
@@ -124,17 +131,23 @@ export function VehicleForm({ action, vehicle, submitLabel }: VehicleFormProps) 
           <Label htmlFor="status">Status</Label>
           <select
             className={selectClassName}
-            defaultValue={vehicle?.status ?? "AVAILABLE"}
+            defaultValue={vehicle?.status ?? statusOptions[0]?.value ?? "AVAILABLE"}
+            disabled={statusOptions.length === 1 && statusOptions[0]?.locked}
             id="status"
             name="status"
             required
           >
-            {VEHICLE_STATUS_OPTIONS.map((option) => (
+            {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </select>
+          {statusOptions[0]?.locked ? (
+            <p className="text-xs text-muted-foreground">
+              Status is managed automatically and cannot be changed here.
+            </p>
+          ) : null}
           {fieldError(state.fieldErrors, "status")}
         </div>
 

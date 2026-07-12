@@ -12,13 +12,14 @@ import { cn } from "@/lib/utils";
 
 type TripRowActionsProps = {
   trip: SerializedTrip;
-  canWrite: boolean;
+  canPlan: boolean;
+  canOperate: boolean;
 };
 
-export function TripRowActions({ trip, canWrite }: TripRowActionsProps) {
+export function TripRowActions({ trip, canPlan, canOperate }: TripRowActionsProps) {
   const [isPending, startTransition] = useTransition();
 
-  if (!canWrite) return null;
+  if (!canPlan && !canOperate) return null;
 
   function runAction(action: () => Promise<unknown>, message: string) {
     if (!window.confirm(message)) return;
@@ -29,7 +30,7 @@ export function TripRowActions({ trip, canWrite }: TripRowActionsProps) {
 
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      {trip.status === "DRAFT" ? (
+      {canPlan && trip.status === "DRAFT" ? (
         <>
           <Link
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
@@ -73,7 +74,7 @@ export function TripRowActions({ trip, canWrite }: TripRowActionsProps) {
         </>
       ) : null}
 
-      {trip.status === "DISPATCHED" ? (
+      {canOperate && trip.status === "DISPATCHED" ? (
         <>
           <Link
             className={cn(buttonVariants({ size: "sm" }))}
@@ -81,20 +82,22 @@ export function TripRowActions({ trip, canWrite }: TripRowActionsProps) {
           >
             Complete
           </Link>
-          <Button
-            disabled={isPending}
-            onClick={() =>
-              runAction(
-                () => cancelTrip(trip.id),
-                `Cancel ${trip.reference}? Vehicle and driver will return to Available.`,
-              )
-            }
-            size="sm"
-            type="button"
-            variant="destructive"
-          >
-            Cancel
-          </Button>
+          {canPlan ? (
+            <Button
+              disabled={isPending}
+              onClick={() =>
+                runAction(
+                  () => cancelTrip(trip.id),
+                  `Cancel ${trip.reference}? Vehicle and driver will return to Available.`,
+                )
+              }
+              size="sm"
+              type="button"
+              variant="destructive"
+            >
+              Cancel
+            </Button>
+          ) : null}
         </>
       ) : null}
 

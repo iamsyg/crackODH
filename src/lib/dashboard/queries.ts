@@ -39,6 +39,8 @@ export async function getDashboardMetrics(
     ...(filters.type ? { type: filters.type } : {}),
     ...(filters.region ? { region: filters.region } : {}),
   };
+  const hasVehicleScope = Boolean(filters.type || filters.region);
+  const tripScope = hasVehicleScope ? { vehicle: scopedWhere } : {};
 
   const [
     activeVehicles,
@@ -58,14 +60,29 @@ export async function getDashboardMetrics(
     prisma.vehicle.count({
       where: { ...scopedWhere, status: "IN_SHOP" },
     }),
-    prisma.trip.count({ where: { status: "DISPATCHED" } }),
-    prisma.trip.count({ where: { status: "DRAFT" } }),
-    prisma.driver.count({ where: { status: "ON_TRIP" } }),
+    prisma.trip.count({ where: { status: "DISPATCHED", ...tripScope } }),
+    prisma.trip.count({ where: { status: "DRAFT", ...tripScope } }),
+    prisma.driver.count({
+      where: {
+        status: "ON_TRIP",
+        ...(hasVehicleScope
+          ? {
+              trips: {
+                some: {
+                  status: "DISPATCHED",
+                  vehicle: scopedWhere,
+                },
+              },
+            }
+          : {}),
+      },
+    }),
     prisma.vehicle.count({
       where: { ...scopedWhere, status: "ON_TRIP" },
     }),
     prisma.trip.groupBy({
       by: ["status"],
+      where: tripScope,
       _count: { _all: true },
     }),
     prisma.vehicle.groupBy({

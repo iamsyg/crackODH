@@ -5,10 +5,11 @@ import { Prisma, VehicleStatus } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requirePermission } from "@/lib/auth/require-permission";
+import { requireActionPermission } from "@/lib/auth/require-permission";
 import { prisma } from "@/lib/prisma";
 
 import { parseVehicleForm } from "./schema";
+import { resolveVehicleStatusCreate, resolveVehicleStatusUpdate } from "./status";
 
 export type VehicleActionState = {
   error?: string;
@@ -24,7 +25,8 @@ export async function createVehicle(
   _prevState: VehicleActionState,
   formData: FormData,
 ): Promise<VehicleActionState> {
-  await requirePermission("vehicles:write");
+  const access = await requireActionPermission("vehicles:write");
+  if (!access.ok) return { error: access.error };
 
   const parsed = parseVehicleForm(formData);
   if (!parsed.success) {
@@ -32,6 +34,10 @@ export async function createVehicle(
   }
 
   const data = parsed.data;
+  const statusResult = resolveVehicleStatusCreate(data.status);
+  if (!statusResult.ok) {
+    return { error: statusResult.error };
+  }
 
   try {
     await prisma.vehicle.create({
@@ -43,7 +49,7 @@ export async function createVehicle(
         maxLoadCapacity: data.maxLoadCapacity,
         odometer: data.odometer,
         acquisitionCost: data.acquisitionCost,
-        status: data.status,
+        status: statusResult.status,
         region: data.region || null,
       },
     });
@@ -63,7 +69,8 @@ export async function updateVehicle(
   _prevState: VehicleActionState,
   formData: FormData,
 ): Promise<VehicleActionState> {
-  await requirePermission("vehicles:write");
+  const access = await requireActionPermission("vehicles:write");
+  if (!access.ok) return { error: access.error };
 
   const parsed = parseVehicleForm(formData);
   if (!parsed.success) {
@@ -71,6 +78,16 @@ export async function updateVehicle(
   }
 
   const data = parsed.data;
+
+  const existing = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!existing) {
+    return { error: "Vehicle not found." };
+  }
+
+  const statusResult = resolveVehicleStatusUpdate(existing.status, data.status);
+  if (!statusResult.ok) {
+    return { error: statusResult.error };
+  }
 
   try {
     await prisma.vehicle.update({
@@ -83,7 +100,7 @@ export async function updateVehicle(
         maxLoadCapacity: data.maxLoadCapacity,
         odometer: data.odometer,
         acquisitionCost: data.acquisitionCost,
-        status: data.status,
+        status: statusResult.status,
         region: data.region || null,
       },
     });
@@ -100,7 +117,8 @@ export async function updateVehicle(
 }
 
 export async function deleteVehicle(vehicleId: string): Promise<VehicleActionState> {
-  await requirePermission("vehicles:write");
+  const access = await requireActionPermission("vehicles:write");
+  if (!access.ok) return { error: access.error };
 
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: vehicleId },

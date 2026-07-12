@@ -8,6 +8,7 @@ export type VehicleReportRow = {
   totalFuelLiters: number;
   totalFuelCost: number;
   totalMaintenanceCost: number;
+  totalExpenseCost: number;
   operationalCost: number;
   totalRevenue: number;
   fuelEfficiency: number | null;
@@ -22,6 +23,7 @@ export async function getVehicleReports(): Promise<VehicleReportRow[]> {
     include: {
       fuelLogs: true,
       maintenanceLogs: true,
+      expenses: true,
       trips: {
         where: { status: "COMPLETED" },
       },
@@ -29,9 +31,14 @@ export async function getVehicleReports(): Promise<VehicleReportRow[]> {
     orderBy: { registrationNumber: "asc" },
   });
 
-  const activeFleet = vehicles.filter((vehicle) => vehicle.status !== "RETIRED").length;
-  const onTripCount = vehicles.filter((vehicle) => vehicle.status === "ON_TRIP").length;
-  const fleetUtilization = activeFleet > 0 ? Math.round((onTripCount / activeFleet) * 100) : 0;
+  const activeVehicles = vehicles.filter((vehicle) => vehicle.status !== "RETIRED");
+  const fleetTotalDistance = activeVehicles.reduce((sum, vehicle) => {
+    const distance = vehicle.trips.reduce(
+      (tripSum, trip) => tripSum + Number(trip.actualDistance ?? trip.plannedDistance),
+      0,
+    );
+    return sum + distance;
+  }, 0);
 
   return vehicles.map((vehicle) => {
     const totalFuelLiters = vehicle.fuelLogs.reduce(
@@ -43,6 +50,10 @@ export async function getVehicleReports(): Promise<VehicleReportRow[]> {
       (sum, log) => sum + Number(log.cost),
       0,
     );
+    const totalExpenseCost = vehicle.expenses.reduce(
+      (sum, expense) => sum + Number(expense.amount),
+      0,
+    );
     const totalDistance = vehicle.trips.reduce(
       (sum, trip) => sum + Number(trip.actualDistance ?? trip.plannedDistance),
       0,
@@ -51,10 +62,14 @@ export async function getVehicleReports(): Promise<VehicleReportRow[]> {
       (sum, trip) => sum + Number(trip.revenue ?? 0),
       0,
     );
-    const operationalCost = totalFuelCost + totalMaintenanceCost;
+    const operationalCost = totalFuelCost + totalMaintenanceCost + totalExpenseCost;
     const acquisitionCost = Number(vehicle.acquisitionCost);
     const fuelEfficiency =
       totalFuelLiters > 0 ? Number((totalDistance / totalFuelLiters).toFixed(2)) : null;
+    const fleetUtilization =
+      vehicle.status !== "RETIRED" && fleetTotalDistance > 0
+        ? Math.round((totalDistance / fleetTotalDistance) * 100)
+        : 0;
     const roi =
       acquisitionCost > 0
         ? Number(((totalRevenue - operationalCost) / acquisitionCost).toFixed(4))
@@ -69,6 +84,7 @@ export async function getVehicleReports(): Promise<VehicleReportRow[]> {
       totalFuelLiters,
       totalFuelCost,
       totalMaintenanceCost,
+      totalExpenseCost,
       operationalCost,
       totalRevenue,
       fuelEfficiency,
@@ -88,6 +104,7 @@ export function vehicleReportsToCsv(rows: VehicleReportRow[]) {
     "Fuel (L)",
     "Fuel Cost",
     "Maintenance Cost",
+    "Other Expenses",
     "Operational Cost",
     "Revenue",
     "Fuel Efficiency (km/L)",
@@ -105,6 +122,7 @@ export function vehicleReportsToCsv(rows: VehicleReportRow[]) {
       row.totalFuelLiters,
       row.totalFuelCost,
       row.totalMaintenanceCost,
+      row.totalExpenseCost,
       row.operationalCost,
       row.totalRevenue,
       row.fuelEfficiency ?? "",

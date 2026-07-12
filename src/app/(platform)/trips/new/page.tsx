@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { TripForm } from "@/components/trips/trip-form";
 import { buttonVariants } from "@/components/ui/button";
+import { canManageTrips } from "@/lib/auth/trip-access";
 import { requireAuth } from "@/lib/auth/require-permission";
 import { createTrip } from "@/lib/trips/actions";
 import { getTripFormContext } from "@/lib/trips/queries";
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 export default async function NewTripPage() {
   const session = await requireAuth();
-  if (!hasPermission(session.user.role, "trips:write")) {
+  if (!hasPermission(session.user.role, "trips:write") || !canManageTrips(session.user.role)) {
     redirect("/trips");
   }
 

@@ -13,9 +13,13 @@ import {
   type SerializedTrip,
 } from "./serialize";
 
-export async function listTrips(filters: TripFilterInput = {}): Promise<SerializedTrip[]> {
+export async function listTrips(
+  filters: TripFilterInput = {},
+  scope: { driverId?: string } = {},
+): Promise<SerializedTrip[]> {
   const trips = await prisma.trip.findMany({
     where: {
+      ...(scope.driverId ? { driverId: scope.driverId } : {}),
       ...(filters.status ? { status: filters.status as TripStatus } : {}),
       ...(filters.q
         ? {

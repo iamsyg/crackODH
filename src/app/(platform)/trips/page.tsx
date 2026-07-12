@@ -5,6 +5,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { TripFilters } from "@/components/trips/trip-filters";
 import { TripTable } from "@/components/trips/trip-table";
 import { buttonVariants } from "@/components/ui/button";
+import { canManageTrips, getTripListScope } from "@/lib/auth/trip-access";
 import { requireAuth } from "@/lib/auth/require-permission";
 import { hasPermission } from "@/lib/rbac";
 import { listTrips } from "@/lib/trips/queries";
@@ -24,6 +25,7 @@ type TripsPageProps = {
 export default async function TripsPage({ searchParams }: TripsPageProps) {
   const session = await requireAuth();
   const canWrite = hasPermission(session.user.role, "trips:write");
+  const canPlanTrips = canWrite && canManageTrips(session.user.role);
 
   const rawParams = await searchParams;
   const parsedFilters = tripFilterSchema.safeParse({
@@ -32,7 +34,8 @@ export default async function TripsPage({ searchParams }: TripsPageProps) {
   });
 
   const filters = parsedFilters.success ? parsedFilters.data : {};
-  const trips = await listTrips(filters);
+  const scope = await getTripListScope(session.user);
+  const trips = await listTrips(filters, scope);
 
   const noticeKey = typeof rawParams.notice === "string" ? rawParams.notice : null;
   const notice = noticeKey ? NOTICE_MESSAGES[noticeKey] : null;
@@ -40,9 +43,13 @@ export default async function TripsPage({ searchParams }: TripsPageProps) {
   return (
     <PageShell
       title="Trip management"
-      description="Create, dispatch, complete, and cancel trips with automatic vehicle and driver status updates."
+      description={
+        canPlanTrips
+          ? "Create, dispatch, complete, and cancel trips with automatic vehicle and driver status updates."
+          : "View and complete trips assigned to you."
+      }
       actions={
-        canWrite ? (
+        canPlanTrips ? (
           <Link className={cn(buttonVariants())} href="/trips/new">
             Create trip
           </Link>
@@ -56,7 +63,7 @@ export default async function TripsPage({ searchParams }: TripsPageProps) {
       ) : null}
 
       <TripFilters filters={filters} />
-      <TripTable canWrite={canWrite} trips={trips} />
+      <TripTable canOperate={canWrite} canPlan={canPlanTrips} trips={trips} />
     </PageShell>
   );
 }

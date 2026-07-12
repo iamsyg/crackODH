@@ -28,6 +28,7 @@ const ROLE_PERMISSIONS: Record<TransitOpsRole, Permission[]> = {
     "vehicles:read",
     "vehicles:write",
     "drivers:read",
+    "drivers:write",
     "trips:read",
     "trips:write",
     "maintenance:read",

@@ -1,8 +1,16 @@
 // CRACKODH
 import { DriverStatus, TripStatus, VehicleStatus } from "@/generated/prisma/client";
 
-import { isLicenseEligible } from "@/lib/drivers/constants";
 import { prisma } from "@/lib/prisma";
+
+import {
+  validateActiveTripConflict,
+  validateCargoCapacity,
+  validateDriverAvailableForDispatch,
+  validateDriverForTripAssignment,
+  validateVehicleAvailableForDispatch,
+  validateVehicleForTripAssignment,
+} from "./rules";
 
 type DispatchValidationInput = {
   vehicleId: string;
@@ -10,6 +18,11 @@ type DispatchValidationInput = {
   cargoWeight: number;
   excludeTripId?: string;
 };
+
+const activeTripFilter = (excludeTripId?: string) => ({
+  status: { in: [TripStatus.DRAFT, TripStatus.DISPATCHED] as TripStatus[] },
+  ...(excludeTripId ? { id: { not: excludeTripId } } : {}),
+});
 
 export async function validateTripDispatch(input: DispatchValidationInput) {
   const [vehicle, driver] = await Promise.all([
@@ -20,42 +33,25 @@ export async function validateTripDispatch(input: DispatchValidationInput) {
   if (!vehicle) return { ok: false as const, error: "Selected vehicle was not found." };
   if (!driver) return { ok: false as const, error: "Selected driver was not found." };
 
-  if (vehicle.status === VehicleStatus.RETIRED || vehicle.status === VehicleStatus.IN_SHOP) {
-    return {
-      ok: false as const,
-      error: "Retired or in-shop vehicles cannot be assigned to trips.",
-    };
-  }
+  const vehicleAssignment = validateVehicleForTripAssignment(vehicle.status);
+  if (!vehicleAssignment.ok) return vehicleAssignment;
 
-  if (Number(input.cargoWeight) > Number(vehicle.maxLoadCapacity)) {
-    return {
-      ok: false as const,
-      error: `Cargo weight exceeds vehicle capacity (${Number(vehicle.maxLoadCapacity)} kg).`,
-    };
-  }
+  const cargoCheck = validateCargoCapacity(input.cargoWeight, Number(vehicle.maxLoadCapacity));
+  if (!cargoCheck.ok) return cargoCheck;
 
-  if (driver.status === DriverStatus.SUSPENDED) {
-    return { ok: false as const, error: "Suspended drivers cannot be assigned to trips." };
-  }
+  const driverAssignment = validateDriverForTripAssignment(
+    driver.status,
+    driver.licenseExpiryDate.toISOString(),
+  );
+  if (!driverAssignment.ok) return driverAssignment;
 
-  if (!isLicenseEligible(driver.licenseExpiryDate.toISOString(), driver.status)) {
-    return {
-      ok: false as const,
-      error: "Driver license is expired or the driver is not eligible for dispatch.",
-    };
-  }
-
-  const activeTripFilter = {
-    status: { in: [TripStatus.DRAFT, TripStatus.DISPATCHED] as TripStatus[] },
-    ...(input.excludeTripId ? { id: { not: input.excludeTripId } } : {}),
-  };
-
+  const filter = activeTripFilter(input.excludeTripId);
   const [vehicleConflict, driverConflict] = await Promise.all([
     prisma.trip.findFirst({
-      where: { vehicleId: input.vehicleId, ...activeTripFilter },
+      where: { vehicleId: input.vehicleId, ...filter },
     }),
     prisma.trip.findFirst({
-      where: { driverId: input.driverId, ...activeTripFilter },
+      where: { driverId: input.driverId, ...filter },
     }),
   ]);
 
@@ -73,33 +69,17 @@ export async function validateTripDispatch(input: DispatchValidationInput) {
     };
   }
 
-  if (vehicleConflict && vehicleConflict.id !== input.excludeTripId) {
-    return {
-      ok: false as const,
-      error: "This vehicle already has another draft or dispatched trip.",
-    };
-  }
+  const vehicleConflictCheck = validateActiveTripConflict(Boolean(vehicleConflict), "vehicle", "dispatch");
+  if (!vehicleConflictCheck.ok) return vehicleConflictCheck;
 
-  if (driverConflict && driverConflict.id !== input.excludeTripId) {
-    return {
-      ok: false as const,
-      error: "This driver already has another draft or dispatched trip.",
-    };
-  }
+  const driverConflictCheck = validateActiveTripConflict(Boolean(driverConflict), "driver", "dispatch");
+  if (!driverConflictCheck.ok) return driverConflictCheck;
 
-  if (vehicle.status !== VehicleStatus.AVAILABLE) {
-    return {
-      ok: false as const,
-      error: "Vehicle must be available before dispatch.",
-    };
-  }
+  const vehicleAvailability = validateVehicleAvailableForDispatch(vehicle.status);
+  if (!vehicleAvailability.ok) return vehicleAvailability;
 
-  if (driver.status !== DriverStatus.AVAILABLE) {
-    return {
-      ok: false as const,
-      error: "Driver must be available before dispatch.",
-    };
-  }
+  const driverAvailability = validateDriverAvailableForDispatch(driver.status);
+  if (!driverAvailability.ok) return driverAvailability;
 
   return { ok: true as const, vehicle, driver };
 }
@@ -113,58 +93,33 @@ export async function validateDraftAssignment(input: DispatchValidationInput) {
   if (!vehicle) return { ok: false as const, error: "Selected vehicle was not found." };
   if (!driver) return { ok: false as const, error: "Selected driver was not found." };
 
-  if (vehicle.status === VehicleStatus.RETIRED || vehicle.status === VehicleStatus.IN_SHOP) {
-    return {
-      ok: false as const,
-      error: "Retired or in-shop vehicles cannot be selected for trips.",
-    };
-  }
+  const vehicleAssignment = validateVehicleForTripAssignment(vehicle.status);
+  if (!vehicleAssignment.ok) return vehicleAssignment;
 
-  if (Number(input.cargoWeight) > Number(vehicle.maxLoadCapacity)) {
-    return {
-      ok: false as const,
-      error: `Cargo weight exceeds vehicle capacity (${Number(vehicle.maxLoadCapacity)} kg).`,
-    };
-  }
+  const cargoCheck = validateCargoCapacity(input.cargoWeight, Number(vehicle.maxLoadCapacity));
+  if (!cargoCheck.ok) return cargoCheck;
 
-  if (driver.status === DriverStatus.SUSPENDED) {
-    return { ok: false as const, error: "Suspended drivers cannot be assigned to trips." };
-  }
+  const driverAssignment = validateDriverForTripAssignment(
+    driver.status,
+    driver.licenseExpiryDate.toISOString(),
+  );
+  if (!driverAssignment.ok) return driverAssignment;
 
-  if (!isLicenseEligible(driver.licenseExpiryDate.toISOString(), driver.status)) {
-    return {
-      ok: false as const,
-      error: "Driver license is expired or the driver is not eligible.",
-    };
-  }
-
-  const activeTripFilter = {
-    status: { in: [TripStatus.DRAFT, TripStatus.DISPATCHED] as TripStatus[] },
-    ...(input.excludeTripId ? { id: { not: input.excludeTripId } } : {}),
-  };
-
+  const filter = activeTripFilter(input.excludeTripId);
   const [vehicleConflict, driverConflict] = await Promise.all([
     prisma.trip.findFirst({
-      where: { vehicleId: input.vehicleId, ...activeTripFilter },
+      where: { vehicleId: input.vehicleId, ...filter },
     }),
     prisma.trip.findFirst({
-      where: { driverId: input.driverId, ...activeTripFilter },
+      where: { driverId: input.driverId, ...filter },
     }),
   ]);
 
-  if (vehicleConflict) {
-    return {
-      ok: false as const,
-      error: "This vehicle already has another draft or dispatched trip.",
-    };
-  }
+  const vehicleConflictCheck = validateActiveTripConflict(Boolean(vehicleConflict), "vehicle", "draft");
+  if (!vehicleConflictCheck.ok) return vehicleConflictCheck;
 
-  if (driverConflict) {
-    return {
-      ok: false as const,
-      error: "This driver already has another draft or dispatched trip.",
-    };
-  }
+  const driverConflictCheck = validateActiveTripConflict(Boolean(driverConflict), "driver", "draft");
+  if (!driverConflictCheck.ok) return driverConflictCheck;
 
   return { ok: true as const, vehicle, driver };
 }

@@ -8,6 +8,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireAuth } from "@/lib/auth/require-permission";
 import { hasPermission } from "@/lib/rbac";
 import { createVehicle } from "@/lib/vehicles/actions";
+import { MANUAL_VEHICLE_STATUSES, getEditableVehicleStatusOptions } from "@/lib/vehicles/status";
+import { VEHICLE_STATUS_LABELS } from "@/lib/vehicles/constants";
 import { cn } from "@/lib/utils";
 
 export default async function NewVehiclePage() {
@@ -26,7 +28,14 @@ export default async function NewVehiclePage() {
         </Link>
       }
     >
-      <VehicleForm action={createVehicle} submitLabel="Create vehicle" />
+      <VehicleForm
+        action={createVehicle}
+        statusOptions={MANUAL_VEHICLE_STATUSES.map((value) => ({
+          value,
+          label: VEHICLE_STATUS_LABELS[value],
+        }))}
+        submitLabel="Create vehicle"
+      />
     </PageShell>
   );
 }

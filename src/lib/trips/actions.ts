@@ -5,7 +5,8 @@ import { DriverStatus, TripStatus, VehicleStatus } from "@/generated/prisma/clie
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requirePermission } from "@/lib/auth/require-permission";
+import { assertAssignedTripAccess, canManageTrips } from "@/lib/auth/trip-access";
+import { requireActionPermission } from "@/lib/auth/require-permission";
 import { prisma } from "@/lib/prisma";
 
 import { parseCompleteTripForm, parseTripForm } from "./schema";
@@ -25,7 +26,11 @@ export async function createTrip(
   _prevState: TripActionState,
   formData: FormData,
 ): Promise<TripActionState> {
-  await requirePermission("trips:write");
+  const access = await requireActionPermission("trips:write");
+  if (!access.ok) return { error: access.error };
+  if (!canManageTrips(access.session.user.role)) {
+    return { error: "Drivers cannot create trips." };
+  }
 
   const parsed = parseTripForm(formData);
   if (!parsed.success) {
@@ -70,10 +75,16 @@ export async function updateTrip(
   _prevState: TripActionState,
   formData: FormData,
 ): Promise<TripActionState> {
-  await requirePermission("trips:write");
+  const access = await requireActionPermission("trips:write");
+  if (!access.ok) return { error: access.error };
+  if (!canManageTrips(access.session.user.role)) {
+    return { error: "Drivers cannot edit trips." };
+  }
 
-  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip) return { error: "Trip not found." };
+  const tripAccess = await assertAssignedTripAccess(access.session.user, tripId);
+  if (!tripAccess.ok) return { error: tripAccess.error };
+
+  const trip = tripAccess.trip;
   if (trip.status !== TripStatus.DRAFT) {
     return { error: "Only draft trips can be edited." };
   }
@@ -118,10 +129,16 @@ export async function updateTrip(
 }
 
 export async function dispatchTrip(tripId: string): Promise<TripActionState> {
-  await requirePermission("trips:write");
+  const access = await requireActionPermission("trips:write");
+  if (!access.ok) return { error: access.error };
+  if (!canManageTrips(access.session.user.role)) {
+    return { error: "Drivers cannot dispatch trips." };
+  }
 
-  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip) return { error: "Trip not found." };
+  const tripAccess = await assertAssignedTripAccess(access.session.user, tripId);
+  if (!tripAccess.ok) return { error: tripAccess.error };
+
+  const trip = tripAccess.trip;
   if (trip.status !== TripStatus.DRAFT) {
     return { error: "Only draft trips can be dispatched." };
   }
@@ -167,7 +184,11 @@ export async function completeTrip(
   _prevState: TripActionState,
   formData: FormData,
 ): Promise<TripActionState> {
-  await requirePermission("trips:write");
+  const access = await requireActionPermission("trips:write");
+  if (!access.ok) return { error: access.error };
+
+  const tripAccess = await assertAssignedTripAccess(access.session.user, tripId);
+  if (!tripAccess.ok) return { error: tripAccess.error };
 
   const trip = await prisma.trip.findUnique({
     where: { id: tripId },
@@ -233,10 +254,16 @@ export async function completeTrip(
 }
 
 export async function cancelTrip(tripId: string): Promise<TripActionState> {
-  await requirePermission("trips:write");
+  const access = await requireActionPermission("trips:write");
+  if (!access.ok) return { error: access.error };
+  if (!canManageTrips(access.session.user.role)) {
+    return { error: "Drivers cannot cancel trips." };
+  }
 
-  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip) return { error: "Trip not found." };
+  const tripAccess = await assertAssignedTripAccess(access.session.user, tripId);
+  if (!tripAccess.ok) return { error: tripAccess.error };
+
+  const trip = tripAccess.trip;
 
   if (trip.status !== TripStatus.DRAFT && trip.status !== TripStatus.DISPATCHED) {
     return { error: "Only draft or dispatched trips can be cancelled." };
@@ -277,10 +304,16 @@ export async function cancelTrip(tripId: string): Promise<TripActionState> {
 }
 
 export async function deleteTrip(tripId: string): Promise<TripActionState> {
-  await requirePermission("trips:write");
+  const access = await requireActionPermission("trips:write");
+  if (!access.ok) return { error: access.error };
+  if (!canManageTrips(access.session.user.role)) {
+    return { error: "Drivers cannot delete trips." };
+  }
 
-  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip) return { error: "Trip not found." };
+  const tripAccess = await assertAssignedTripAccess(access.session.user, tripId);
+  if (!tripAccess.ok) return { error: tripAccess.error };
+
+  const trip = tripAccess.trip;
   if (trip.status !== TripStatus.DRAFT) {
     return { error: "Only draft trips can be deleted." };
   }

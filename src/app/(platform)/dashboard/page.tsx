@@ -1,5 +1,5 @@
 // CRACKODH
-import { DashboardBreakdown } from "@/components/dashboard/dashboard-breakdown";
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { PageShell } from "@/components/layout/page-shell";
@@ -56,7 +56,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         />
       </div>
 
-      <DashboardBreakdown metrics={metrics} />
+      <DashboardCharts metrics={metrics} />
     </PageShell>
   );
 }

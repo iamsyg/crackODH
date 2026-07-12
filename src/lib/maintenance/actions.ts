@@ -5,7 +5,7 @@ import { MaintenanceStatus, TripStatus, VehicleStatus } from "@/generated/prisma
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requirePermission } from "@/lib/auth/require-permission";
+import { requireActionPermission } from "@/lib/auth/require-permission";
 import { prisma } from "@/lib/prisma";
 
 import { parseCloseMaintenanceForm, parseMaintenanceForm } from "./schema";
@@ -24,7 +24,8 @@ export async function createMaintenanceLog(
   _prevState: MaintenanceActionState,
   formData: FormData,
 ): Promise<MaintenanceActionState> {
-  await requirePermission("maintenance:write");
+  const access = await requireActionPermission("maintenance:write");
+  if (!access.ok) return { error: access.error };
 
   const parsed = parseMaintenanceForm(formData);
   if (!parsed.success) {
@@ -80,7 +81,8 @@ export async function closeMaintenanceLog(
   _prevState: MaintenanceActionState,
   formData: FormData,
 ): Promise<MaintenanceActionState> {
-  await requirePermission("maintenance:write");
+  const access = await requireActionPermission("maintenance:write");
+  if (!access.ok) return { error: access.error };
 
   const parsed = parseCloseMaintenanceForm(formData);
   if (!parsed.success) {
@@ -138,7 +140,8 @@ export async function updateMaintenanceLog(
   _prevState: MaintenanceActionState,
   formData: FormData,
 ): Promise<MaintenanceActionState> {
-  await requirePermission("maintenance:write");
+  const access = await requireActionPermission("maintenance:write");
+  if (!access.ok) return { error: access.error };
 
   const log = await prisma.maintenanceLog.findUnique({ where: { id: logId } });
   if (!log) return { error: "Maintenance record not found." };

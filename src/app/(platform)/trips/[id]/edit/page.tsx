@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { TripForm } from "@/components/trips/trip-form";
 import { buttonVariants } from "@/components/ui/button";
+import { assertAssignedTripAccess, canManageTrips } from "@/lib/auth/trip-access";
 import { requireAuth } from "@/lib/auth/require-permission";
 import { updateTrip } from "@/lib/trips/actions";
 import { getTripById, getTripFormContext } from "@/lib/trips/queries";
@@ -17,11 +18,14 @@ type EditTripPageProps = {
 
 export default async function EditTripPage({ params }: EditTripPageProps) {
   const session = await requireAuth();
-  if (!hasPermission(session.user.role, "trips:write")) {
+  if (!hasPermission(session.user.role, "trips:write") || !canManageTrips(session.user.role)) {
     redirect("/trips");
   }
 
   const { id } = await params;
+  const tripAccess = await assertAssignedTripAccess(session.user, id);
+  if (!tripAccess.ok) redirect("/trips");
+
   const [trip, options] = await Promise.all([getTripById(id), getTripFormContext(id)]);
 
   if (!trip) notFound();

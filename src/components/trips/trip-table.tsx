@@ -5,10 +5,11 @@ import type { SerializedTrip } from "@/lib/trips/serialize";
 
 type TripTableProps = {
   trips: SerializedTrip[];
-  canWrite: boolean;
+  canPlan: boolean;
+  canOperate: boolean;
 };
 
-export function TripTable({ trips, canWrite }: TripTableProps) {
+export function TripTable({ trips, canPlan, canOperate }: TripTableProps) {
   if (trips.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center">
@@ -59,7 +60,7 @@ export function TripTable({ trips, canWrite }: TripTableProps) {
                   <TripStatusBadge status={trip.status} />
                 </td>
                 <td className="px-4 py-3">
-                  <TripRowActions canWrite={canWrite} trip={trip} />
+                  <TripRowActions canOperate={canOperate} canPlan={canPlan} trip={trip} />
                 </td>
               </tr>
             ))}

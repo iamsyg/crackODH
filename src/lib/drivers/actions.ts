@@ -5,10 +5,11 @@ import { DriverStatus, Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requirePermission } from "@/lib/auth/require-permission";
+import { requireActionPermission } from "@/lib/auth/require-permission";
 import { prisma } from "@/lib/prisma";
 
 import { parseDriverForm } from "./schema";
+import { resolveDriverStatusCreate, resolveDriverStatusUpdate } from "./status";
 
 export type DriverActionState = {
   error?: string;
@@ -24,7 +25,8 @@ export async function createDriver(
   _prevState: DriverActionState,
   formData: FormData,
 ): Promise<DriverActionState> {
-  await requirePermission("drivers:write");
+  const access = await requireActionPermission("drivers:write");
+  if (!access.ok) return { error: access.error };
 
   const parsed = parseDriverForm(formData);
   if (!parsed.success) {
@@ -32,6 +34,10 @@ export async function createDriver(
   }
 
   const data = parsed.data;
+  const statusResult = resolveDriverStatusCreate(data.status);
+  if (!statusResult.ok) {
+    return { error: statusResult.error };
+  }
 
   try {
     await prisma.driver.create({
@@ -42,7 +48,7 @@ export async function createDriver(
         licenseExpiryDate: data.licenseExpiryDate,
         contactNumber: data.contactNumber,
         safetyScore: data.safetyScore,
-        status: data.status,
+        status: statusResult.status,
       },
     });
   } catch (error) {
@@ -61,7 +67,8 @@ export async function updateDriver(
   _prevState: DriverActionState,
   formData: FormData,
 ): Promise<DriverActionState> {
-  await requirePermission("drivers:write");
+  const access = await requireActionPermission("drivers:write");
+  if (!access.ok) return { error: access.error };
 
   const parsed = parseDriverForm(formData);
   if (!parsed.success) {
@@ -69,6 +76,16 @@ export async function updateDriver(
   }
 
   const data = parsed.data;
+
+  const existing = await prisma.driver.findUnique({ where: { id: driverId } });
+  if (!existing) {
+    return { error: "Driver not found." };
+  }
+
+  const statusResult = resolveDriverStatusUpdate(existing.status, data.status);
+  if (!statusResult.ok) {
+    return { error: statusResult.error };
+  }
 
   try {
     await prisma.driver.update({
@@ -80,7 +97,7 @@ export async function updateDriver(
         licenseExpiryDate: data.licenseExpiryDate,
         contactNumber: data.contactNumber,
         safetyScore: data.safetyScore,
-        status: data.status,
+        status: statusResult.status,
       },
     });
   } catch (error) {
@@ -96,7 +113,8 @@ export async function updateDriver(
 }
 
 export async function deleteDriver(driverId: string): Promise<DriverActionState> {
-  await requirePermission("drivers:write");
+  const access = await requireActionPermission("drivers:write");
+  if (!access.ok) return { error: access.error };
 
   const driver = await prisma.driver.findUnique({
     where: { id: driverId },
