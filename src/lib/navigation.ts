@@ -1,3 +1,4 @@
+// CRACKODH
 import type { Permission } from "@/lib/rbac";
 
 export type NavIconName =

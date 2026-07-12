@@ -1,3 +1,4 @@
+// CRACKODH
 import "dotenv/config";
 
 import { hash } from "bcryptjs";

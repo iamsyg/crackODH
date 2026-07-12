@@ -1,3 +1,4 @@
+// CRACKODH
 import type { Vehicle } from "@/generated/prisma/client";
 
 export type SerializedVehicle = {

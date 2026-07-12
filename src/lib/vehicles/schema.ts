@@ -1,3 +1,4 @@
+// CRACKODH
 import { z } from "zod";
 
 const vehicleStatusSchema = z.enum(["AVAILABLE", "ON_TRIP", "IN_SHOP", "RETIRED"]);

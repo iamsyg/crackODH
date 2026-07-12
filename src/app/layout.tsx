@@ -1,3 +1,4 @@
+// CRACKODH
 import type { Metadata } from "next";
 
 import { AuthProvider } from "@/components/providers/auth-provider";

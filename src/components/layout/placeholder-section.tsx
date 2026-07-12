@@ -1,3 +1,4 @@
+// CRACKODH
 type PlaceholderSectionProps = {
   title: string;
   items: string[];

@@ -1,3 +1,4 @@
+// CRACKODH
 import { Badge } from "@/components/ui/badge";
 import type { TripStatusValue } from "@/lib/trips/constants";
 import { TRIP_STATUS_LABELS } from "@/lib/trips/constants";
